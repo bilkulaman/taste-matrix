@@ -1,0 +1,181 @@
+/* src/styles/tokens.css */
+/* Design tokens with full Dark & Light mode definitions */
+
+:root,
+[data-theme="dark"] {
+  /* ── 1. Color Palette (Dark Theme) ────────────────────────────── */
+  --tm-bg: #000000;
+  --tm-bg-subtle: #080808;
+  --tm-bg-glass: rgba(255, 255, 255, 0.03);
+  --tm-bg-glass-elevated: rgba(255, 255, 255, 0.06);
+  --tm-bg-glass-popover: rgba(10, 10, 15, 0.95);
+
+  /* Panel-in-panel architecture */
+  --tm-panel-bg: rgba(255, 255, 255, 0.05);
+  --tm-panel-border: rgba(255, 255, 255, 0.10);
+  --tm-panel-shadow: 0 4px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  --tm-card-bg: rgba(255, 255, 255, 0.07);
+  --tm-card-border: rgba(255, 255, 255, 0.10);
+  --tm-card-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+
+  --tm-subtle-bg: rgba(255, 255, 255, 0.04);
+  --tm-subtle-border: rgba(255, 255, 255, 0.08);
+
+  /* Floating Rail Capsule */
+  --tm-rail-bg: rgba(255, 255, 255, 0.05);
+  --tm-rail-border: rgba(255, 255, 255, 0.10);
+  --tm-rail-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  /* Lime Accent */
+  --tm-lime: #c6f432;
+  --tm-lime-dim: rgba(198, 244, 50, 0.15);
+  --tm-lime-border: rgba(198, 244, 50, 0.35);
+  --tm-lime-glow: rgba(198, 244, 50, 0.35);
+  --tm-lime-text: #000000;
+
+  /* Violet & Purple Accents */
+  --tm-violet-core: #6d28d9;
+  --tm-violet-light: #8b5cf6;
+  --tm-violet-deep: #4c1d95;
+  --tm-violet-subtle: rgba(124, 58, 237, 0.12);
+  --tm-violet-border: rgba(124, 58, 237, 0.28);
+  --tm-violet-glow: rgba(109, 40, 217, 0.45);
+
+  /* Typography / Content Colors */
+  --tm-text-primary: #ffffff;
+  --tm-text-muted: #8a8a93;
+  --tm-text-dim: rgba(138, 138, 147, 0.65);
+  --tm-text-inverse: #000000;
+
+  /* Borders */
+  --tm-border-subtle: rgba(255, 255, 255, 0.08);
+  --tm-border-card: rgba(255, 255, 255, 0.10);
+  --tm-border-active: rgba(255, 255, 255, 0.18);
+  --tm-border-lime: rgba(198, 244, 50, 0.40);
+
+  /* Shadows & Glows */
+  --tm-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --tm-shadow-popover: 0 12px 36px rgba(0, 0, 0, 0.65);
+  --tm-glow-lime-btn: 0 0 24px rgba(198, 244, 50, 0.35);
+
+  --tm-glow-purple-ambient: radial-gradient(
+    ellipse 80% 55% at 50% 110%,
+    rgba(109, 40, 217, 0.38) 0%,
+    rgba(124, 58, 237, 0.15) 35%,
+    transparent 70%
+  );
+  --tm-grain-opacity: 0.035;
+  --tm-track-stroke: rgba(255, 255, 255, 0.08);
+  --tm-grid-color: rgba(255, 255, 255, 0.05);
+
+  /* ── Typography & Sizing ─────────────────────────────────────────── */
+  --tm-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --tm-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --tm-radius-sm: 6px;
+  --tm-radius-md: 12px;
+  --tm-radius-lg: 16px;
+  --tm-radius-pill: 22px;
+  --tm-radius-panel: 32px;
+  --tm-radius-full: 9999px;
+
+  --tm-blur-nav: blur(18px);
+  --tm-blur-card: blur(16px);
+  --tm-blur-panel: blur(24px);
+
+  --tm-ease-reveal: cubic-bezier(0.22, 1, 0.36, 1);
+  --tm-ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+  --tm-dur-fast: 0.15s;
+  --tm-dur-normal: 0.3s;
+}
+
+/* ── Light Theme ─────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* Soft off-white / light gray-blue background */
+  --tm-bg: #f4f6fa;
+  --tm-bg-subtle: #e9ecf3;
+  --tm-bg-glass: rgba(255, 255, 255, 0.70);
+  --tm-bg-glass-elevated: rgba(255, 255, 255, 0.88);
+  --tm-bg-glass-popover: rgba(255, 255, 255, 0.98);
+
+  /* Panel-in-panel architecture: panels white/60 with blur and subtle shadow */
+  --tm-panel-bg: rgba(255, 255, 255, 0.60);
+  --tm-panel-border: rgba(0, 0, 0, 0.07);
+  --tm-panel-shadow: 0 8px 32px rgba(100, 116, 139, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  /* Nested pill cards: lighter card (white/85) */
+  --tm-card-bg: rgba(255, 255, 255, 0.85);
+  --tm-card-border: rgba(0, 0, 0, 0.06);
+  --tm-card-shadow: 0 2px 10px rgba(100, 116, 139, 0.06);
+
+  --tm-subtle-bg: rgba(0, 0, 0, 0.03);
+  --tm-subtle-border: rgba(0, 0, 0, 0.06);
+
+  /* Floating Rail Capsule in light mode */
+  --tm-rail-bg: rgba(255, 255, 255, 0.75);
+  --tm-rail-border: rgba(0, 0, 0, 0.08);
+  --tm-rail-shadow: 0 8px 32px rgba(100, 116, 139, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+
+  /* Lime Accent (crisp with dark text on it) */
+  --tm-lime: #c6f432;
+  --tm-lime-dim: rgba(198, 244, 50, 0.25);
+  --tm-lime-border: rgba(163, 230, 53, 0.6);
+  --tm-lime-glow: rgba(198, 244, 50, 0.4);
+  --tm-lime-text: #090d16;
+
+  /* Violet & Purple Accents */
+  --tm-violet-core: #7c3aed;
+  --tm-violet-light: #8b5cf6;
+  --tm-violet-deep: #5b21b6;
+  --tm-violet-subtle: rgba(124, 58, 237, 0.08);
+  --tm-violet-border: rgba(124, 58, 237, 0.18);
+  --tm-violet-glow: rgba(167, 139, 250, 0.25);
+
+  /* Near-black text and refined grays */
+  --tm-text-primary: #090d16;
+  --tm-text-muted: #64748b;
+  --tm-text-dim: #94a3b8;
+  --tm-text-inverse: #ffffff;
+
+  /* Borders */
+  --tm-border-subtle: rgba(0, 0, 0, 0.06);
+  --tm-border-card: rgba(0, 0, 0, 0.08);
+  --tm-border-active: rgba(0, 0, 0, 0.16);
+  --tm-border-lime: rgba(132, 204, 22, 0.45);
+
+  /* Shadows */
+  --tm-shadow-card: 0 4px 16px rgba(100, 116, 139, 0.08);
+  --tm-shadow-popover: 0 12px 32px rgba(100, 116, 139, 0.15);
+  --tm-glow-lime-btn: 0 0 16px rgba(198, 244, 50, 0.35);
+
+  /* Softer lilac glow, lower grain */
+  --tm-glow-purple-ambient: radial-gradient(
+    ellipse 80% 55% at 50% 110%,
+    rgba(196, 181, 253, 0.25) 0%,
+    rgba(221, 214, 254, 0.10) 35%,
+    transparent 70%
+  );
+  --tm-grain-opacity: 0.012;
+  --tm-track-stroke: rgba(0, 0, 0, 0.07);
+  --tm-grid-color: rgba(0, 0, 0, 0.05);
+}
+
+/* ── Global 300ms transition on background/color/border only ──────── */
+html,
+body,
+aside,
+header,
+main,
+nav,
+section,
+article,
+div,
+button,
+input,
+textarea,
+select {
+  transition-property: background-color, border-color, color;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
