@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.GROQ_API_KEY
   if (!apiKey) {
     console.error('[TasteMatrix Chat] Missing GROQ_API_KEY environment variable.')
-    return res.status(500).json({ error: 'Chat unavailable' })
+    return res.status(502).json({ error: 'Chat unavailable' })
   }
 
   try {
@@ -31,8 +31,10 @@ export default async function handler(req, res) {
     // Keep the last 10 messages
     const trimmedMessages = normalizedMessages.slice(-10)
 
+    const modelName = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
+
     const payload = {
-      model: 'llama-3.3-70b-versatile',
+      model: modelName,
       temperature: 0.4,
       max_tokens: 500,
       messages: [
@@ -56,15 +58,18 @@ export default async function handler(req, res) {
         `[TasteMatrix Chat] Upstream error from Groq API (status ${upstreamRes.status}):`,
         errBody
       )
-      return res.status(500).json({ error: 'Chat unavailable' })
+      return res.status(502).json({ error: 'Chat unavailable' })
     }
 
     const data = await upstreamRes.json()
-    const reply = data.choices?.[0]?.message?.content || ''
+    let reply = data.choices?.[0]?.message?.content
+    if (!reply || typeof reply !== 'string' || !reply.trim()) {
+      reply = 'The assistant could not generate a response. Please try rephrasing your question.'
+    }
 
     return res.status(200).json({ reply })
   } catch (err) {
     console.error('[TasteMatrix Chat] Internal handler error:', err?.message || err)
-    return res.status(500).json({ error: 'Chat unavailable' })
+    return res.status(502).json({ error: 'Chat unavailable' })
   }
 }

@@ -116,12 +116,16 @@ export default function Assistant() {
     setLoading(true)
 
     try {
-      const res = await sendChatMessage(q)
-      setMessages((prev) => [...prev, { role: 'assistant', text: res.reply }])
+      const res = await sendChatMessage(
+        [...messages, { role: 'user', content: q }],
+        { latestReading: reading, selectedSample: reading?.sample }
+      )
+      const replyText = typeof res === 'string' ? res : (res?.reply || 'The assistant is unavailable right now. Please try again.')
+      setMessages((prev) => [...prev, { role: 'assistant', text: replyText }])
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: 'Error connecting to the reasoning model. Please try again.' },
+        { role: 'assistant', text: 'The assistant is unavailable right now. Please try again.' },
       ])
     } finally {
       setLoading(false)

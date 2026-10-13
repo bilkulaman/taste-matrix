@@ -298,15 +298,22 @@ export async function sendChatMessage(messages, context = {}) {
     formattedMessages = [{ role: messages.role || 'user', content: messages.content || messages.text || '' }]
   }
 
+  const fallbackText = 'The assistant is unavailable right now. Please try again.'
+
   try {
     const res = await axios.post('/api/chat', {
       messages: formattedMessages,
       context,
     }, { timeout: 10000 })
-    return res.data?.reply || 'No response received from the assistant.'
+
+    const reply = res.data?.reply
+    if (typeof reply === 'string' && reply.trim()) {
+      return reply
+    }
+    return fallbackText
   } catch (err) {
     console.warn('[TasteMatrix Chat] /api/chat request failed:', err?.message)
-    return 'TasteMatrix Assistant is currently unavailable. Please check your network or try again later.'
+    return fallbackText
   }
 }
 
