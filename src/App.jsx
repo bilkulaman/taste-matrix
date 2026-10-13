@@ -10,6 +10,7 @@ import RasaGuide  from './pages/RasaGuide.jsx'
 import Assistant  from './pages/Assistant.jsx'
 import Settings   from './pages/Settings.jsx'
 import About      from './pages/About.jsx'
+import Report     from './pages/Report.jsx'
 import AppLayout  from './components/layout/AppLayout.jsx'
 
 import { Component } from 'react'
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/assistant"  element={<PageWrapper><Assistant /></PageWrapper>} />
           <Route path="/settings"   element={<PageWrapper><Settings  /></PageWrapper>} />
           <Route path="/about"      element={<PageWrapper><About     /></PageWrapper>} />
+          <Route path="/report"     element={<PageWrapper><Report    /></PageWrapper>} />
           <Route path="*"           element={<PageWrapper><Dashboard /></PageWrapper>} />
         </Routes>
       </AnimatePresence>

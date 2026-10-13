@@ -3,25 +3,23 @@ import { useState, useEffect, useRef } from 'react'
 import { getLatestReading } from '../api.js'
 
 /**
- * Polls getLatestReading every 3 s and returns the current reading + previous.
+ * Returns latest reading and allows on-demand fetch without duplicate background intervals.
  */
-export function useLiveReading() {
+export function useLiveReading(sampleId) {
   const [reading, setReading]   = useState(null)
   const [prev, setPrev]         = useState(null)
   const [loading, setLoading]   = useState(true)
-  const timer = useRef(null)
 
-  const fetch = async () => {
-    const r = await getLatestReading()
+  const fetchReading = async (sampleOverride) => {
+    const r = await getLatestReading(sampleOverride || sampleId)
     setReading(cur => { setPrev(cur); return r })
     setLoading(false)
+    return r
   }
 
   useEffect(() => {
-    fetch()
-    timer.current = setInterval(fetch, 3000)
-    return () => clearInterval(timer.current)
-  }, [])
+    fetchReading(sampleId)
+  }, [sampleId])
 
-  return { reading, prev, loading }
+  return { reading, prev, loading, fetchReading }
 }

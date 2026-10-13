@@ -85,7 +85,7 @@ export function AnalyzeCard({ reading, onSaved }) {
       let p = 0
       intervalRef.current = setInterval(() => {
         if (pausedRef.current) return
-        p += 0.03 + Math.random() * 0.02
+        p += 0.04
         setProgress(Math.min(p, 0.95))
         if (p >= 0.95) {
           clearInterval(intervalRef.current)

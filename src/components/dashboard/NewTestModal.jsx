@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Wifi, AlertCircle, CheckCircle, ChevronDown, Check } from 'lucide-react'
 import { getSamples, addKanbanCard } from '../../api.js'
+import { useDeviceStatus } from '../../hooks/useDeviceStatus.js'
 
 const SAMPLE_COLORS = {
   'distilled-water': '#60a5fa', 'salt-water': '#94a3b8',
@@ -86,10 +87,10 @@ function SamplePicker({ value, onChange, samples }) {
 
 // ESP32 device status
 function DeviceStatus() {
-  const [status] = useState('connected')  // connected | disconnected | syncing
+  const { online } = useDeviceStatus({ refreshMs: 3000 })
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-      {status === 'connected'
+      {online
         ? <><Wifi size={13} color="#c6f432" /><span className="text-[12px] text-white">ESP32 connected</span>
             <span className="ml-auto flex items-center gap-1 text-[10px] text-[#34d399]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#34d399] animate-pulse" />Online

@@ -10,9 +10,8 @@ import {
   Wifi, CheckCheck, Filter
 } from 'lucide-react'
 
-import { useLiveReading }  from '../hooks/useLiveReading.js'
-import { useHistory }      from '../hooks/useHistory.js'
 import { setActiveSample, getActiveSampleId } from '../api.js'
+import { useLiveReadings } from '../hooks/useLiveReadings.js'
 
 // UI Primitives
 import { PanelCard, PillCard, RoundIconButton, OverlapBadges } from '../components/ui/index.js'
@@ -34,19 +33,21 @@ const TABS = [
 ]
 
 export default function Dashboard() {
-  const { reading, prev, loading } = useLiveReading()
   const [activeSample, setActiveSampleState] = useState(getActiveSampleId() || 'haldi-water')
-  const { data: history }          = useHistory({ limit: 35, refreshMs: 3000, sampleId: activeSample })
-
   const [activeTab, setActiveTab]     = useState('Live')
   const [newTestOpen, setNewTestOpen] = useState(false)
   const [pinnedReading, setPinnedReading] = useState(null)
   const [refreshKey, setRefreshKey]   = useState(0)
 
-  // Chart data — last 30 readings
+  // Single unified data hook – the only data source for Dashboard
+  const { latest, prev, buffer, recentAssays, status, refetch } = useLiveReadings(activeSample)
+
+  // The active reading shown in gauges and cards (either pinned inspection or live reading)
+  const activeReading = pinnedReading ?? latest
+
+  // Rolling 30-point chart data directly from buffer (chronological: oldest to newest)
   const chartData = useMemo(() => {
-    const safeHistory = Array.isArray(history) ? history : []
-    return [...safeHistory].reverse().slice(-30).map((r, i) => ({
+    return buffer.map((r, i) => ({
       index: i,
       label: r?.timestamp
         ? new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -55,20 +56,17 @@ export default function Dashboard() {
       tds: r?.tds ?? 0,
       turbidity: r?.turbidity ?? 0,
     }))
-  }, [history])
+  }, [buffer])
 
-  // Sparkline series per gauge
+  // Sparkline series per gauge (last 20 readings from buffer)
   const series = useMemo(() => {
-    const safeHistory = Array.isArray(history) ? history : []
-    const rows = [...safeHistory].reverse().slice(-20)
+    const rows = buffer.slice(-20)
     return {
       ph:        rows.map(r => r?.ph ?? 7.0),
       tds:       rows.map(r => r?.tds ?? 0),
       turbidity: rows.map(r => r?.turbidity ?? 0),
     }
-  }, [history])
-
-  const activeReading = pinnedReading ?? reading
+  }, [buffer])
 
   function handleSelectSample(sampleId) {
     setActiveSampleState(sampleId)
@@ -80,12 +78,51 @@ export default function Dashboard() {
     if (actionId === 'analyze')  { setActiveTab('Live') }
     if (actionId === 'new-test') { setNewTestOpen(true) }
     if (actionId === 'sample-changed') {
-      setActiveSampleState(getActiveSampleId())
+      const newId = getActiveSampleId()
+      setActiveSampleState(newId)
+      setPinnedReading(null)
     }
   }
 
+  const showDebugStrip = typeof window !== 'undefined' && (
+    window.location.search.includes('debug=1') || Boolean(import.meta.env.DEV)
+  )
+
   return (
     <>
+      {/* ── DEV-ONLY DEBUG STRIP ── */}
+      {showDebugStrip && (
+        <div
+          className="w-full px-3.5 py-2 rounded-2xl text-[11px] font-mono flex items-center justify-between flex-wrap gap-2 mb-3 select-all"
+          style={{
+            background: status.isDemo ? 'rgba(239, 68, 68, 0.08)' : 'rgba(198, 244, 50, 0.06)',
+            border: `1px solid ${status.isDemo ? 'rgba(239, 68, 68, 0.25)' : 'rgba(198, 244, 50, 0.2)'}`,
+            color: 'var(--tm-text-secondary)',
+          }}
+        >
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span
+              className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase"
+              style={{
+                background: status.online && !status.isDemo ? '#34d399' : (status.isDemo ? '#f59e0b' : '#f87171'),
+                color: '#000',
+              }}
+            >
+              {status.online && !status.isDemo ? 'LIVE BACKEND' : (status.isDemo ? 'DEMO DATA' : 'OFFLINE')}
+            </span>
+            <span>Polls: <strong className="text-[var(--tm-text-primary)]">{status.pollCount}</strong></span>
+            <span>Reading ID: <strong className="text-[var(--tm-text-primary)]">#{activeReading?.id ?? '—'}</strong></span>
+            <span className="hidden sm:inline">Endpoint: <span className="text-[var(--tm-text-muted)]">{status.lastUrl || '—'}</span></span>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <span>pH: <strong className="text-[var(--tm-text-primary)] font-mono">{activeReading?.ph != null ? activeReading.ph.toFixed(2) : '—'}</strong></span>
+            <span>TDS: <strong className="text-[var(--tm-text-primary)] font-mono">{activeReading?.tds != null ? Math.round(activeReading.tds) : '—'} ppm</strong></span>
+            <span>Turb: <strong className="text-[var(--tm-text-primary)] font-mono">{activeReading?.turbidity != null ? activeReading.turbidity.toFixed(1) : '—'} NTU</strong></span>
+            <span className="hidden md:inline">UTC: <span className="text-[var(--tm-text-muted)]">{status.lastTimestamp || '—'}</span></span>
+          </div>
+        </div>
+      )}
+
       {/* ── TOP NAV & ACTION ROW ── */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[var(--tm-subtle-border)]">
         {/* Pill Nav */}
@@ -132,13 +169,31 @@ export default function Dashboard() {
               border: '1px solid var(--tm-subtle-border)',
             }}
           >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34d399] opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34d399]" />
-            </span>
-            <Wifi size={13} color="#34d399" />
-            <span className="text-[var(--tm-text-muted)]">ESP32 Node:</span>
-            <span className="text-[var(--tm-text-primary)] font-mono font-medium">Online</span>
+            {status.online && !status.isDemo ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#34d399] opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#34d399]" />
+                </span>
+                <Wifi size={13} color="#34d399" />
+                <span className="text-[var(--tm-text-muted)]">ESP32 Node:</span>
+                <span className="text-[var(--tm-text-primary)] font-mono font-medium">Online</span>
+              </>
+            ) : (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#8a8a93]" />
+                </span>
+                <Wifi size={13} color="#8a8a93" />
+                <span className="text-[var(--tm-text-muted)]">ESP32 Node:</span>
+                <span className="text-[var(--tm-text-muted)] font-mono font-medium">Offline</span>
+                {status.isDemo && (
+                  <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-[rgba(245,158,11,0.15)] text-[#f59e0b] border border-[rgba(245,158,11,0.3)] font-semibold">
+                    Demo data
+                  </span>
+                )}
+              </>
+            )}
           </div>
 
           <CommandPalette onAction={handlePaletteAction} />
@@ -215,7 +270,10 @@ export default function Dashboard() {
                   />
                   <RoundIconButton
                     icon={RefreshCw}
-                    onClick={() => setRefreshKey(k => k + 1)}
+                    onClick={() => {
+                      setRefreshKey(k => k + 1)
+                      refetch()
+                    }}
                     label="Refresh Stream"
                   />
                 </div>
@@ -242,7 +300,7 @@ export default function Dashboard() {
                   history={series.turbidity}
                 />
                 <AnalyzeCard
-                  key={refreshKey}
+                  key={activeReading?.id ?? refreshKey}
                   reading={activeReading}
                   onSaved={() => {}}
                 />
@@ -305,7 +363,7 @@ export default function Dashboard() {
 
                   <div className="flex flex-col gap-4 flex-1">
                     <RecentTestsList
-                      history={history}
+                      history={recentAssays}
                       selectedId={pinnedReading?.id}
                       onSelect={(r) => setPinnedReading((p) => (p?.id === r.id ? null : r))}
                     />
