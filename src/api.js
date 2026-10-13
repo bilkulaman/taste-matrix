@@ -284,21 +284,29 @@ export async function predictTaste({ ph, tds, turbidity }) {
 }
 
 // ── AI Assistant Chat ──────────────────────────────────────────────────────
-export async function sendChatMessage(message) {
+export async function sendChatMessage(messages, context = {}) {
+  // Support both (messages, context) array/object and legacy single string argument
+  let formattedMessages = []
+  if (Array.isArray(messages)) {
+    formattedMessages = messages.map(m => ({
+      role: m.role || 'user',
+      content: m.content || m.text || '',
+    }))
+  } else if (typeof messages === 'string') {
+    formattedMessages = [{ role: 'user', content: messages }]
+  } else if (messages && typeof messages === 'object') {
+    formattedMessages = [{ role: messages.role || 'user', content: messages.content || messages.text || '' }]
+  }
+
   try {
-    const res = await axios.post('/api/chat', { message }, { timeout: 3000 })
-    return res.data
-  } catch {
-    const lower = message.toLowerCase()
-    if (lower.includes('ph'))
-      return { reply: 'pH measures hydrogen-ion activity. Values 6.0–8.0 are typical for aqueous dravya extracts; strongly acidic (< 5.0) signals Amla (sour) rasa.' }
-    if (lower.includes('tds'))
-      return { reply: 'TDS (Total Dissolved Solids) reflects ionic mineral content. Salt Water records > 1800 ppm, whereas Distilled Water approaches 0–15 ppm.' }
-    if (lower.includes('turbidity'))
-      return { reply: 'Turbidity quantifies light scattering in the extract. Haldi Water records 80–110 NTU due to suspended curcumin nanoparticles.' }
-    if (lower.includes('rasa'))
-      return { reply: 'Rasa is the primary Ayurvedic taste assessment: Madhura, Amla, Lavana, Katu, Tikta, and Kashaya, correlated with elemental composition.' }
-    return { reply: 'Ask me about pH, TDS, turbidity, or Dravya Rasa. I can also explain sensor metrics in the context of Ayurvedic pharmacopeia.' }
+    const res = await axios.post('/api/chat', {
+      messages: formattedMessages,
+      context,
+    }, { timeout: 10000 })
+    return res.data?.reply || 'No response received from the assistant.'
+  } catch (err) {
+    console.warn('[TasteMatrix Chat] /api/chat request failed:', err?.message)
+    return 'TasteMatrix Assistant is currently unavailable. Please check your network or try again later.'
   }
 }
 
