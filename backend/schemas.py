@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 # Reading schemas
 class ReadingCreate(BaseModel):
     device_id: str
-    sample: str
+    sample: Optional[str] = None
     ph: float = Field(..., ge=0.0, le=14.0)
     tds: float = Field(..., ge=0.0, le=5000.0)
     turbidity: float = Field(..., ge=0.0, le=3000.0)
@@ -22,6 +22,8 @@ class ReadingResponse(BaseModel):
     predicted_taste: str
     confidence: float
     device_id: str
+    matched_sample: Optional[str] = None
+    match_confidence: Optional[float] = None
 
     class Config:
         from_attributes = True

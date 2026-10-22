@@ -73,6 +73,59 @@ def match_sample_name(name_or_id: str) -> str:
             return s["name"]
     return name_or_id
 
+import math
+
+DEFAULT_SAMPLE_PROFILES = {
+    "Distilled Water": {"ph": 7.0, "tds": 10.0, "turbidity": 0.3},
+    "Salt Water":      {"ph": 7.1, "tds": 2100.0, "turbidity": 4.0},
+    "Sugar Water":     {"ph": 6.8, "tds": 190.0, "turbidity": 2.0},
+    "Haldi Water":     {"ph": 6.7, "tds": 350.0, "turbidity": 94.0},
+    "Neem Water":      {"ph": 5.85, "tds": 290.0, "turbidity": 48.0},
+}
+
+def feature_vector(ph: float, tds: float, turbidity: float):
+    # Normalize pH (range 14), log10(tds+1) and log10(turbidity+1)
+    norm_ph = ph / 14.0
+    norm_tds = math.log10(max(0.0, tds) + 1.0)
+    norm_turb = math.log10(max(0.0, turbidity) + 1.0)
+    return (norm_ph, norm_tds, norm_turb)
+
+def match_closest_sample(ph: float, tds: float, turbidity: float, db: Session):
+    q_vec = feature_vector(ph, tds, turbidity)
+
+    # Compute reference profile for each sample: mean of stored readings, fall back to defaults
+    distances = []
+    for sample_name, def_prof in DEFAULT_SAMPLE_PROFILES.items():
+        s_id = match_sample_id(sample_name)
+        stats = db.query(
+            func.avg(models.Reading.ph),
+            func.avg(models.Reading.tds),
+            func.avg(models.Reading.turbidity)
+        ).filter(
+            (models.Reading.sample == sample_name) | (models.Reading.sample == s_id)
+        ).first()
+
+        ref_ph = stats[0] if stats and stats[0] is not None else def_prof["ph"]
+        ref_tds = stats[1] if stats and stats[1] is not None else def_prof["tds"]
+        ref_turb = stats[2] if stats and stats[2] is not None else def_prof["turbidity"]
+
+        ref_vec = feature_vector(float(ref_ph), float(ref_tds), float(ref_turb))
+        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(q_vec, ref_vec)))
+        distances.append((sample_name, dist))
+
+    distances.sort(key=lambda x: x[1])
+    closest_sample, d1 = distances[0]
+    second_sample, d2 = distances[1]
+
+    # match_confidence (0-1, based on distance gap to second closest)
+    gap = max(0.0, d2 - d1)
+    if d2 > 1e-6:
+        match_conf = max(0.0, min(1.0, gap / d2))
+    else:
+        match_conf = 0.0
+
+    return closest_sample, round(match_conf, 4)
+
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["System"])
 def health_check():
@@ -88,6 +141,21 @@ def create_reading(
     if not x_device_key or x_device_key != DEVICE_KEY:
         raise HTTPException(status_code=401, detail="Invalid or missing X-Device-Key header")
 
+    # Determine sample: if missing or "Auto", pick closest known sample by distance
+    raw_sample = (reading.sample or "").strip()
+    is_auto = not raw_sample or raw_sample.lower() == "auto"
+
+    if is_auto:
+        matched_sample, match_confidence = match_closest_sample(
+            ph=reading.ph, tds=reading.tds, turbidity=reading.turbidity, db=db
+        )
+        stored_sample = matched_sample
+    else:
+        stored_sample = match_sample_name(raw_sample)
+        matched_sample, match_confidence = match_closest_sample(
+            ph=reading.ph, tds=reading.tds, turbidity=reading.turbidity, db=db
+        )
+
     # Run predictor
     prediction = predict(ph=reading.ph, tds=reading.tds, turbidity=reading.turbidity)
     predicted_taste = prediction["taste"]
@@ -95,7 +163,7 @@ def create_reading(
 
     # Store reading
     db_reading = models.Reading(
-        sample=reading.sample,
+        sample=stored_sample,
         ph=reading.ph,
         tds=reading.tds,
         turbidity=reading.turbidity,
@@ -111,17 +179,17 @@ def create_reading(
     alerts_to_create = []
     if reading.tds > 2500:
         alerts_to_create.append({
-            "message": f"High Salinity threshold exceeded: {reading.sample} at {reading.tds:.0f} ppm (limit 2500 ppm).",
+            "message": f"High Salinity threshold exceeded: {stored_sample} at {reading.tds:.0f} ppm (limit 2500 ppm).",
             "severity": "warn"
         })
     if reading.turbidity > 80:
         alerts_to_create.append({
-            "message": f"Turbidity spike detected: {reading.sample} at {reading.turbidity:.1f} NTU (limit 80 NTU).",
+            "message": f"Turbidity spike detected: {stored_sample} at {reading.turbidity:.1f} NTU (limit 80 NTU).",
             "severity": "warn"
         })
     if reading.ph < 4.0 or reading.ph > 10.0:
         alerts_to_create.append({
-            "message": f"Critical pH anomaly: {reading.sample} reached pH {reading.ph:.2f} (acceptable 4.0 - 10.0).",
+            "message": f"Critical pH anomaly: {stored_sample} reached pH {reading.ph:.2f} (acceptable 4.0 - 10.0).",
             "severity": "error"
         })
 
@@ -130,7 +198,7 @@ def create_reading(
             id=f"alt-{uuid.uuid4().hex[:8]}",
             message=a["message"],
             severity=a["severity"],
-            sample=reading.sample,
+            sample=stored_sample,
             created_at=datetime.now(timezone.utc),
             read=False
         )
@@ -138,7 +206,12 @@ def create_reading(
 
     db.commit()
     db.refresh(db_reading)
-    return db_reading
+
+    # Attach matched_sample and match_confidence to response model
+    resp = schemas.ReadingResponse.from_orm(db_reading)
+    resp.matched_sample = matched_sample
+    resp.match_confidence = match_confidence
+    return resp
 
 @app.get("/readings/latest", response_model=schemas.ReadingResponse, tags=["Readings"])
 def get_latest_reading(
