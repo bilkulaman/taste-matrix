@@ -8,10 +8,9 @@ import { getSamples, setActiveSample, getActiveSampleId } from '../../api.js'
 
 const SAMPLE_COLORS = {
   'distilled-water': '#60a5fa',
-  'salt-water':       '#94a3b8',
-  'sugar-water':      '#c6f432',
   'haldi-water':      '#f59e0b',
-  'neem-water':       '#34d399',
+  'basic-water':      '#38bdf8',
+  'chalk-water':      '#a78bfa',
 }
 
 function dot(id) {

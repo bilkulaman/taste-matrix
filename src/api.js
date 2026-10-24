@@ -13,18 +13,16 @@ let _backendOnline = false
 
 const SAMPLE_NAME_MAP = {
   'distilled-water': 'Distilled Water',
-  'salt-water': 'Salt Water',
-  'sugar-water': 'Sugar Water',
   'haldi-water': 'Haldi Water',
-  'neem-water': 'Neem Water',
+  'basic-water': 'Basic Water',
+  'chalk-water': 'Chalk Water',
 }
 
 const SAMPLE_ID_MAP = {
   'distilled water': 'distilled-water',
-  'salt water': 'salt-water',
-  'sugar water': 'sugar-water',
   'haldi water': 'haldi-water',
-  'neem water': 'neem-water',
+  'basic water': 'basic-water',
+  'chalk water': 'chalk-water',
 }
 
 export function toSampleName(idOrName) {

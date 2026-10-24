@@ -8,10 +8,9 @@ import { Droplet } from 'lucide-react'
 
 const DEFAULT_SAMPLES = [
   { id: 'distilled-water', name: 'Distilled Water', color: '#60a5fa', count: 14, rasa: 'Anabhilashita' },
-  { id: 'salt-water',      name: 'Salt Water',      color: '#38bdf8', count: 22, rasa: 'Lavana' },
-  { id: 'sugar-water',     name: 'Sugar Water',     color: '#c6f432', count: 18, rasa: 'Madhura' },
   { id: 'haldi-water',     name: 'Haldi Water',     color: '#f59e0b', count: 31, rasa: 'Tikta' },
-  { id: 'neem-water',      name: 'Neem Water',      color: '#34d399', count: 9,  rasa: 'Tikta' },
+  { id: 'basic-water',     name: 'Basic Water',     color: '#38bdf8', count: 22, rasa: 'Lavana' },
+  { id: 'chalk-water',     name: 'Chalk Water',     color: '#a78bfa', count: 18, rasa: 'Kashaya' },
 ]
 
 export function OverlapBadges({

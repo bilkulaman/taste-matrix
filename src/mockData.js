@@ -3,28 +3,25 @@
 // ZERO Math.random or random-walk simulation is used here.
 
 export const SAMPLES = [
-  { id: 'haldi-water',     name: 'Haldi Water',     rasa: 'Tikta (Bitter)',          phBase: 6.65, tdsBase: 360,  turbidityBase: 92.0, color: '#f59e0b' },
-  { id: 'neem-water',      name: 'Neem Water',      rasa: 'Tikta (Bitter)',          phBase: 5.85, tdsBase: 270,  turbidityBase: 48.0, color: '#34d399' },
-  { id: 'salt-water',      name: 'Salt Water',      rasa: 'Lavana (Salty)',          phBase: 7.10, tdsBase: 2150, turbidityBase: 5.5,  color: '#38bdf8' },
-  { id: 'sugar-water',     name: 'Sugar Water',     rasa: 'Madhura (Sweet)',         phBase: 6.85, tdsBase: 200,  turbidityBase: 2.5,  color: '#c6f432' },
-  { id: 'distilled-water', name: 'Distilled Water', rasa: 'Anabhilashita (Tasteless)', phBase: 7.05, tdsBase: 10,   turbidityBase: 0.3,  color: '#60a5fa' },
+  { id: 'distilled-water', name: 'Distilled Water', rasa: 'Anabhilashita (Tasteless)', phBase: 6.9,  tdsBase: 345,  turbidityBase: 0.0,  color: '#60a5fa' },
+  { id: 'haldi-water',     name: 'Haldi Water',     rasa: 'Tikta (Bitter)',          phBase: 6.4,  tdsBase: 0,    turbidityBase: 0.0,  color: '#f59e0b' },
+  { id: 'basic-water',     name: 'Basic Water',     rasa: 'Lavana (Salty)',          phBase: 7.8,  tdsBase: 1240, turbidityBase: 92.0, color: '#38bdf8' },
+  { id: 'chalk-water',     name: 'Chalk Water',     rasa: 'Kashaya (Astringent)',    phBase: 6.1,  tdsBase: 1283, turbidityBase: 45.0, color: '#a78bfa' },
 ]
 
 export const TASTE_CLASSES = {
   'distilled-water': { predictedTaste: 'Anabhilashita', confidence: 0.98 },
-  'salt-water':      { predictedTaste: 'Lavana',         confidence: 0.87 },
-  'sugar-water':     { predictedTaste: 'Madhura',        confidence: 0.86 },
-  'haldi-water':     { predictedTaste: 'Tikta',          confidence: 0.74 },
-  'neem-water':      { predictedTaste: 'Tikta',          confidence: 0.88 },
+  'haldi-water':     { predictedTaste: 'Tikta',          confidence: 0.95 },
+  'basic-water':     { predictedTaste: 'Lavana',         confidence: 0.94 },
+  'chalk-water':     { predictedTaste: 'Kashaya',        confidence: 0.92 },
 }
 
 // Deterministic sample values
 const SAMPLE_DEFAULTS = {
-  'haldi-water':     { ph: 6.65, tds: 360, turb: 92.0, taste: 'Tikta', conf: 0.74 },
-  'neem-water':      { ph: 5.85, tds: 270, turb: 48.0, taste: 'Tikta', conf: 0.88 },
-  'salt-water':      { ph: 7.10, tds: 2150, turb: 5.5, taste: 'Lavana', conf: 0.87 },
-  'sugar-water':     { ph: 6.85, tds: 200, turb: 2.5, taste: 'Madhura', conf: 0.86 },
-  'distilled-water': { ph: 7.05, tds: 10,  turb: 0.3, taste: 'Anabhilashita', conf: 0.98 },
+  'distilled-water': { ph: 6.9, tds: 345,  turb: 0.0,  taste: 'Anabhilashita', conf: 0.98 },
+  'haldi-water':     { ph: 6.4, tds: 0,    turb: 0.0,  taste: 'Tikta',         conf: 0.95 },
+  'basic-water':     { ph: 7.8, tds: 1240, turb: 92.0, taste: 'Lavana',        conf: 0.94 },
+  'chalk-water':     { ph: 6.1, tds: 1283, turb: 45.0, taste: 'Kashaya',       conf: 0.92 },
 }
 
 // Generate static deterministic fallback readings (newest first)

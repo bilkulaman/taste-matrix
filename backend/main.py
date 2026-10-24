@@ -53,10 +53,9 @@ app.add_middleware(
 
 KNOWN_SAMPLES = [
     {"id": "distilled-water", "name": "Distilled Water", "color": "#60a5fa", "rasa": "Anabhilashita"},
-    {"id": "salt-water",      "name": "Salt Water",      "color": "#38bdf8", "rasa": "Lavana"},
-    {"id": "sugar-water",     "name": "Sugar Water",     "color": "#c6f432", "rasa": "Madhura"},
     {"id": "haldi-water",     "name": "Haldi Water",     "color": "#f59e0b", "rasa": "Tikta"},
-    {"id": "neem-water",      "name": "Neem Water",      "color": "#34d399", "rasa": "Tikta"},
+    {"id": "basic-water",     "name": "Basic Water",     "color": "#38bdf8", "rasa": "Lavana"},
+    {"id": "chalk-water",     "name": "Chalk Water",     "color": "#a78bfa", "rasa": "Kashaya"},
 ]
 
 def match_sample_id(name_or_id: str) -> str:
@@ -76,28 +75,26 @@ def match_sample_name(name_or_id: str) -> str:
 import math
 
 DEFAULT_SAMPLE_PROFILES = {
-    "Distilled Water": {"ph": 7.0, "tds": 10.0, "turbidity": 0.3},
-    "Salt Water":      {"ph": 7.1, "tds": 2100.0, "turbidity": 4.0},
-    "Sugar Water":     {"ph": 6.8, "tds": 190.0, "turbidity": 2.0},
-    "Haldi Water":     {"ph": 6.7, "tds": 350.0, "turbidity": 94.0},
-    "Neem Water":      {"ph": 5.85, "tds": 290.0, "turbidity": 48.0},
+    "Distilled Water": {"ph": 6.9, "tds": 345.0, "turbidity": 0.0},
+    "Haldi Water":     {"ph": 6.4, "tds": 0.0,   "turbidity": 0.0},
+    "Basic Water":     {"ph": 7.8, "tds": 1240.0, "turbidity": 92.0},
+    "Chalk Water":     {"ph": 6.1, "tds": 1283.0, "turbidity": 45.0},
 }
 
-def feature_vector(ph: float, tds: float, turbidity: float):
-    # Normalize pH (range 14), log10(tds+1) and log10(turbidity+1)
-    norm_ph = ph / 14.0
-    norm_tds = math.log10(max(0.0, tds) + 1.0)
-    norm_turb = math.log10(max(0.0, turbidity) + 1.0)
-    return (norm_ph, norm_tds, norm_turb)
+def calc_match_distance(ph: float, tds: float, turb: float, p: float, t: float, u: float) -> float:
+    # Match distance = sqrt(((ph-p)/1.0)^2 + ((log10(tds+1)-log10(t+1))/1.5)^2 + ((turb-u)/50)^2)
+    ph_term = ((ph - p) / 1.0) ** 2
+    tds_term = ((math.log10(max(0.0, tds) + 1.0) - math.log10(max(0.0, t) + 1.0)) / 1.5) ** 2
+    turb_term = ((turb - u) / 50.0) ** 2
+    return math.sqrt(ph_term + tds_term + turb_term)
 
 def match_closest_sample(ph: float, tds: float, turbidity: float, db: Session):
-    q_vec = feature_vector(ph, tds, turbidity)
-
-    # Compute reference profile for each sample: mean of stored readings, fall back to defaults
+    # Compute reference profile for each sample: use mean of stored readings once 10+ exist, else defaults
     distances = []
     for sample_name, def_prof in DEFAULT_SAMPLE_PROFILES.items():
         s_id = match_sample_id(sample_name)
         stats = db.query(
+            func.count(models.Reading.id),
             func.avg(models.Reading.ph),
             func.avg(models.Reading.tds),
             func.avg(models.Reading.turbidity)
@@ -105,26 +102,34 @@ def match_closest_sample(ph: float, tds: float, turbidity: float, db: Session):
             (models.Reading.sample == sample_name) | (models.Reading.sample == s_id)
         ).first()
 
-        ref_ph = stats[0] if stats and stats[0] is not None else def_prof["ph"]
-        ref_tds = stats[1] if stats and stats[1] is not None else def_prof["tds"]
-        ref_turb = stats[2] if stats and stats[2] is not None else def_prof["turbidity"]
+        count = stats[0] if stats and stats[0] is not None else 0
+        if count >= 10:
+            ref_ph = float(stats[1])
+            ref_tds = float(stats[2])
+            ref_turb = float(stats[3])
+        else:
+            ref_ph = def_prof["ph"]
+            ref_tds = def_prof["tds"]
+            ref_turb = def_prof["turbidity"]
 
-        ref_vec = feature_vector(float(ref_ph), float(ref_tds), float(ref_turb))
-        dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(q_vec, ref_vec)))
+        dist = calc_match_distance(ph, tds, turbidity, ref_ph, ref_tds, ref_turb)
         distances.append((sample_name, dist))
 
     distances.sort(key=lambda x: x[1])
     closest_sample, d1 = distances[0]
     second_sample, d2 = distances[1]
 
-    # match_confidence (0-1, based on distance gap to second closest)
+    # If the best distance > 2.0, store sample "Unknown Sample"
+    matched_sample = "Unknown Sample" if d1 > 2.0 else closest_sample
+
+    # match_confidence from the gap to the second best
     gap = max(0.0, d2 - d1)
     if d2 > 1e-6:
         match_conf = max(0.0, min(1.0, gap / d2))
     else:
         match_conf = 0.0
 
-    return closest_sample, round(match_conf, 4)
+    return matched_sample, round(match_conf, 4)
 
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/health", tags=["System"])
@@ -175,21 +180,21 @@ def create_reading(
     )
     db.add(db_reading)
 
-    # Check alert thresholds: (TDS > 2500, turbidity > 80, pH < 4 or > 10)
+    # Check alert thresholds: (TDS > 1500, turbidity > 80, pH < 5.5 or > 8.5)
     alerts_to_create = []
-    if reading.tds > 2500:
+    if reading.tds > 1500:
         alerts_to_create.append({
-            "message": f"High Salinity threshold exceeded: {stored_sample} at {reading.tds:.0f} ppm (limit 2500 ppm).",
+            "message": f"High Salinity threshold exceeded: {stored_sample} at {reading.tds:.0f} ppm (limit 1500 ppm).",
             "severity": "warn"
         })
     if reading.turbidity > 80:
         alerts_to_create.append({
-            "message": f"Turbidity spike detected: {stored_sample} at {reading.turbidity:.1f} NTU (limit 80 NTU).",
+            "message": f"Turbidity spike detected: {stored_sample} at {reading.turbidity:.1f} index (limit 80).",
             "severity": "warn"
         })
-    if reading.ph < 4.0 or reading.ph > 10.0:
+    if reading.ph < 5.5 or reading.ph > 8.5:
         alerts_to_create.append({
-            "message": f"Critical pH anomaly: {stored_sample} reached pH {reading.ph:.2f} (acceptable 4.0 - 10.0).",
+            "message": f"Critical pH anomaly: {stored_sample} reached pH {reading.ph:.2f} (acceptable 5.5 - 8.5).",
             "severity": "error"
         })
 

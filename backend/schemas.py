@@ -8,7 +8,7 @@ class ReadingCreate(BaseModel):
     sample: Optional[str] = None
     ph: float = Field(..., ge=0.0, le=14.0)
     tds: float = Field(..., ge=0.0, le=5000.0)
-    turbidity: float = Field(..., ge=0.0, le=3000.0)
+    turbidity: float = Field(..., ge=0.0, le=100.0)
     temperature: Optional[float] = None
 
 class ReadingResponse(BaseModel):
@@ -30,9 +30,9 @@ class ReadingResponse(BaseModel):
 
 # Predict schemas
 class PredictRequest(BaseModel):
-    ph: float
-    tds: float
-    turbidity: float
+    ph: float = Field(..., ge=0.0, le=14.0)
+    tds: float = Field(..., ge=0.0, le=5000.0)
+    turbidity: float = Field(..., ge=0.0, le=100.0)
 
 class PredictResponse(BaseModel):
     taste: str

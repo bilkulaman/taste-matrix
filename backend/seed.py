@@ -5,88 +5,76 @@ from database import SessionLocal, Base, engine
 import models
 from predictor import predict
 
+# 4 profiles: Distilled Water 6.9, 345, 0 | Haldi Water 6.4, 0, 0 | Basic Water 7.8, 1240, 92 | Chalk Water 6.1, 1283, 45
+# Tolerances around profile: TDS +/-3%, pH +/-0.1, turbidity +/-3
 SAMPLE_PROFILES = [
-    {"name": "Distilled Water", "ph": (6.9, 7.2), "tds": (5, 15), "turbidity": (0.1, 0.5)},
-    {"name": "Salt Water",      "ph": (6.8, 7.4), "tds": (1800, 2400), "turbidity": (2.0, 8.0)},
-    {"name": "Sugar Water",     "ph": (6.5, 7.1), "tds": (150, 250), "turbidity": (1.0, 4.0)},
-    {"name": "Haldi Water",     "ph": (6.4, 7.0), "tds": (280, 480), "turbidity": (80, 110)},
-    {"name": "Neem Water",      "ph": (5.6, 6.2), "tds": (190, 360), "turbidity": (30, 65)},
+    {"name": "Distilled Water", "ph": 6.9, "tds": 345.0,  "turbidity": 0.0},
+    {"name": "Haldi Water",     "ph": 6.4, "tds": 0.0,    "turbidity": 0.0},
+    {"name": "Basic Water",     "ph": 7.8, "tds": 1240.0, "turbidity": 92.0},
+    {"name": "Chalk Water",     "ph": 6.1, "tds": 1283.0, "turbidity": 45.0},
 ]
 
 INITIAL_KANBAN = [
     {"sample": "Haldi Water",     "name": "Curcuma Longa Standard Batch 04",  "status": "verified",  "notes": "Optimal curcumin suspension"},
-    {"sample": "Neem Water",      "name": "Azadirachta Indica Extract #12",    "status": "verified",  "notes": "Verified bitter alkaloid profile"},
-    {"sample": "Salt Water",      "name": "Saindhava Lavana Assay #08",        "status": "analyzing", "notes": "Active bio-impedance acquisition"},
-    {"sample": "Sugar Water",     "name": "Sharkara Calibration Run 02",       "status": "pending",   "notes": "Awaiting spectral stabilization"},
-    {"sample": "Distilled Water", "name": "Milli-Q Baseline Blank",            "status": "flagged",   "notes": "Residual particulate flagged"},
+    {"sample": "Basic Water",     "name": "Alkaline Mineral Salt Solution",   "status": "verified",  "notes": "Verified Lavana ionic profile"},
+    {"sample": "Chalk Water",     "name": "Calcium Carbonate Extract #08",     "status": "analyzing", "notes": "Active astringent turbidity acquisition"},
+    {"sample": "Distilled Water", "name": "Pure Reference Blank",             "status": "pending",   "notes": "Baseline sensor zero check"},
+    {"sample": "Chalk Water",     "name": "Chalk Water Batch 02",             "status": "flagged",   "notes": "Turbidity deviation flagged"},
     {"sample": "Haldi Water",     "name": "Curcuma Aqueous Extract Batch 05",  "status": "pending",   "notes": "Queued for automated testing"},
 ]
 
 INITIAL_ALERTS = [
-    {"message": "Turbidity spike: Haldi Water reached 94.3 NTU – above 80 NTU baseline threshold.", "severity": "warn",  "sample": "Haldi Water", "read": False},
-    {"message": "pH calibration stable across last 24 runs for Salt Water (7.18 ± 0.03).",           "severity": "info",  "sample": "Salt Water",  "read": False},
-    {"message": "TDS sensor drift notice: automatic zero-point drift corrected (+12 ppm).",        "severity": "warn",  "sample": "Distilled Water", "read": True},
-    {"message": "Neem Water bio-fingerprint verified: Tikta rasa detected with 91% ML confidence.", "severity": "info",  "sample": "Neem Water",  "read": True},
+    {"message": "Turbidity spike: Basic Water reached 92.0 index – above 80 index threshold.", "severity": "warn",  "sample": "Basic Water",     "read": False},
+    {"message": "pH calibration stable across last 24 runs for Distilled Water (6.90 ± 0.03).",  "severity": "info",  "sample": "Distilled Water", "read": False},
+    {"message": "Chalk Water bio-fingerprint verified: Kashaya rasa detected with high confidence.", "severity": "info", "sample": "Chalk Water",     "read": True},
+    {"message": "Zero TDS reading verified for Haldi Water reference profile.",                     "severity": "info",  "sample": "Haldi Water",     "read": True},
 ]
 
 def seed():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        # Check if already seeded
-        existing_readings = db.query(models.Reading).count()
-        if existing_readings >= 40:
-            print(f"Database already has {existing_readings} readings. Skipping seed.")
-            return
-
-        print("Seeding initial historical readings, kanban tests, and alerts...")
         now = datetime.now(timezone.utc)
 
-        # Seed ~15 readings per sample
         for sample_info in SAMPLE_PROFILES:
             name = sample_info["name"]
-            ph_min, ph_max = sample_info["ph"]
-            tds_min, tds_max = sample_info["tds"]
-            turb_min, turb_max = sample_info["turbidity"]
+            existing_count = db.query(models.Reading).filter(models.Reading.sample == name).count()
+            if existing_count < 16:
+                print(f"Seeding readings for {name} around profile (TDS +/-3%, pH +/-0.1, turbidity +/-3)...")
+                base_ph = sample_info["ph"]
+                base_tds = sample_info["tds"]
+                base_turb = sample_info["turbidity"]
 
-            # Current walking values
-            c_ph = (ph_min + ph_max) / 2
-            c_tds = (tds_min + tds_max) / 2
-            c_turb = (turb_min + turb_max) / 2
+                for i in range(16):
+                    ts = now - timedelta(seconds=(16 - i) * 6)
 
-            for i in range(16):
-                # timestamp stepping backwards from now
-                ts = now - timedelta(seconds=(16 - i) * 6)
-                
-                # small random walk
-                c_ph = max(ph_min, min(ph_max, c_ph + random.uniform(-0.06, 0.06)))
-                c_tds = max(tds_min, min(tds_max, c_tds + random.uniform(-15, 15)))
-                c_turb = max(turb_min, min(turb_max, c_turb + random.uniform(-1.5, 1.5)))
+                    c_ph = max(0.0, min(14.0, base_ph + random.uniform(-0.1, 0.1)))
+                    tds_delta = base_tds * 0.03
+                    c_tds = max(0.0, min(5000.0, base_tds + random.uniform(-tds_delta, tds_delta)))
+                    c_turb = max(0.0, min(100.0, base_turb + random.uniform(-3.0, 3.0)))
 
-                pred = predict(ph=c_ph, tds=c_tds, turbidity=c_turb)
+                    pred = predict(ph=c_ph, tds=c_tds, turbidity=c_turb)
 
-                reading = models.Reading(
-                    sample=name,
-                    ph=round(c_ph, 2),
-                    tds=round(c_tds, 1),
-                    turbidity=round(c_turb, 1),
-                    temperature=round(random.uniform(24.5, 26.2), 1),
-                    timestamp=ts,
-                    predicted_taste=pred["taste"],
-                    confidence=pred["confidence"],
-                    device_id="esp32-node-01"
-                )
-                db.add(reading)
+                    reading = models.Reading(
+                        sample=name,
+                        ph=round(c_ph, 2),
+                        tds=round(c_tds, 1),
+                        turbidity=round(c_turb, 1),
+                        temperature=round(random.uniform(24.5, 26.2), 1),
+                        timestamp=ts,
+                        predicted_taste=pred["taste"],
+                        confidence=pred["confidence"],
+                        device_id="esp32-node-01"
+                    )
+                    db.add(reading)
+            else:
+                print(f"Sample {name} already has {existing_count} readings.")
 
         # Seed initial kanban tests if empty
         if db.query(models.Test).count() == 0:
             for t in INITIAL_KANBAN:
-                # determine sample profile center for realistic prediction
                 p = next((sp for sp in SAMPLE_PROFILES if sp["name"] == t["sample"]), SAMPLE_PROFILES[0])
-                avg_ph = (p["ph"][0] + p["ph"][1]) / 2
-                avg_tds = (p["tds"][0] + p["tds"][1]) / 2
-                avg_turb = (p["turbidity"][0] + p["turbidity"][1]) / 2
-                pred = predict(ph=avg_ph, tds=avg_tds, turbidity=avg_turb)
+                pred = predict(ph=p["ph"], tds=p["tds"], turbidity=p["turbidity"])
 
                 test = models.Test(
                     id=f"tst-{uuid.uuid4().hex[:8]}",

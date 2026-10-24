@@ -20,10 +20,9 @@ const PAGE_SIZE = 10
 
 const SAMPLE_COLORS = {
   'Distilled Water': '#60a5fa',
-  'Salt Water':      '#38bdf8',
-  'Sugar Water':     '#c6f432',
   'Haldi Water':     '#f59e0b',
-  'Neem Water':      '#34d399',
+  'Basic Water':     '#38bdf8',
+  'Chalk Water':     '#a78bfa',
 }
 
 function formatTime(iso) {
